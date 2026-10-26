@@ -36,14 +36,24 @@ async def upload_excel(file: UploadFile = File(...)):
         contents = await file.read()
         df = pd.read_excel(io.BytesIO(contents))
 
-        # ৩. ডাটা ক্লিন করা ও ফরম্যাট করা
+        # ৩. ডাটা ক্লিন করা ও ফরম্যাট করা (ইনডেক্স ভিত্তিক রিড করার জন্য)
         processed_data = []
         for index, row in df.iterrows():
+            # ইনডেক্স দিয়ে কলামের ডেটা ফেচ করা যাতে হেডার নাম পরিবর্তন হলেও সমস্যা না হয়
+            roll_val = row.iloc[0] if len(row) > 0 else ''
+            name_val = row.iloc[1] if len(row) > 1 else ''
+            pre_val = row.iloc[5] if len(row) > 5 else 0
+            post_val = row.iloc[6] if len(row) > 6 else 0
+
+            # যদি রোল বা নাম খালি থাকে তবে স্কিপ করতে পারেন
+            if pd.isna(roll_val):
+                continue
+
             processed_data.append({
-                "name": str(row.get('Name', '')).strip(),
-                "roll": str(row.get('Roll', '')).strip(),
-                "pre_test": str(row.get('PreTest', 0)).strip(),
-                "post_test": str(row.get('PostTest', 0)).strip()
+                "name": str(name_val).strip(),
+                "roll": str(roll_val).strip(),
+                "pre_test": str(pre_val).strip(),
+                "post_test": str(post_val).strip()
             })
 
         # ৪. ইউনিক টোকেন জেনারেট
