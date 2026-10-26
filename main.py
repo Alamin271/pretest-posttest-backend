@@ -32,33 +32,28 @@ async def upload_excel(file: UploadFile = File(...)):
 
     try:
         contents = await file.read()
+        # সরাসরি হেডার বাদ দিয়ে ১ নম্বর রো থেকে ডেটা রিড করা (যেখানে রো-১ হলো হেডার)
         df = pd.read_excel(io.BytesIO(contents), skiprows=1)
-
-        # কলামগুলোর সঠিক নাম খুঁজে বের করা (যাতে ইনডেক্স বা নামের সমস্যায় জিরো না আসে)
-        roll_col = df.columns[0]
-        name_col = df.columns[1]
-        
-        # Pre-test এবং Post-test কলামের সঠিক নাম খুঁজে বের করা
-        pre_col = next((col for col in df.columns if 'Pre-' in str(col) or 'pre' in str(col).lower()), df.columns[5] if len(df.columns) > 5 else None)
-        post_col = next((col for col in df.columns if 'post-' in str(col) or 'post' in str(col).lower()), df.columns[6] if len(df.columns) > 6 else None)
 
         processed_data = []
         for index, row in df.iterrows():
-            r_val = row.get(roll_col, '')
-            if pd.isna(r_val) or str(r_val).strip() == '':
-                continue
-                
-            n_val = row.get(name_col, '')
-            pre_val = row.get(pre_col, 0) if pre_col else 0
-            post_val = row.get(post_col, 0) if post_col else 0
+            # পজিশনভিত্তিক নিরাপদ ডেটা ফেচিং
+            r_val = row.iloc[0] if len(row) > 0 else ''  # 0 নম্বর কলাম = Roll
+            n_val = row.iloc[1] if len(row) > 1 else ''  # 1 নম্বর কলাম = Name
+            pre_val = row.iloc[5] if len(row) > 5 else 0 # 5 নম্বর কলাম = Pre-Test
+            post_val = row.iloc[6] if len(row) > 6 else 0# 6 নম্বর কলাম = Post-Test
 
-            # যদি কোনো কারণে মান ন্যান (NaN) বা খালি থাকে
+            # যদি রোল ফাঁকা থাকে বা হেডার লেখা আবার চলে আসে তবে স্কিপ করবে
+            if pd.isna(r_val) or str(r_val).strip() == '' or str(r_val).strip().lower() == 'roll':
+                continue
+
+            # ন্যান (NaN) ভ্যালু হ্যান্ডেল করা
             if pd.isna(pre_val): pre_val = 0
             if pd.isna(post_val): post_val = 0
 
             processed_data.append({
                 "name": str(n_val).strip(),
-                "roll": str(int(r_val)) if str(r_val).isdigit() else str(r_val).strip(),
+                "roll": str(r_val).strip(),
                 "pre_test": str(pre_val).strip(),
                 "post_test": str(post_val).strip()
             })
